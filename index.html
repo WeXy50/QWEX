@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QWEX | Güneş Fırtınası Erken Uyarı Sistemi - TUA Astro Hackathon</title>
+    <meta name="description" content="QWEX - Yapay zeka destekli güneş fırtınası erken uyarı sistemi. NOAA verilerini kullanarak güneş aktivitelerini tahmin edin.">
+    <link rel="icon" href="logo.png" type="image/png">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+</head>
+<body>
+    <!-- PRELOADER -->
+    <div id="preloader">
+        <div class="loader-content">
+            <div class="sun-loader">
+                <div class="sun-core"></div>
+                <div class="sun-rays"></div>
+                <div class="sun-flare"></div>
+            </div>
+            <div class="loader-text">
+                <span class="loader-logo">QWE<span class="loader-x">X</span></span>
+                <div class="loading-bar"><div class="loading-progress"></div></div>
+                <p class="loading-status">Güneş verileri yükleniyor...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- STORM ALERT BANNER (hidden by default, shown in jury mode) -->
+    <div id="stormBanner" class="storm-banner hidden">
+        <div class="storm-banner-content">
+            <div class="storm-pulse"></div>
+            <i class="fas fa-exclamation-triangle"></i>
+            <span><strong>⚠️ UYARI:</strong> X2.1 sınıfı güneş patlaması tespit edildi! Jeomanyetik fırtına bekleniyor (G3-G4). Detaylar için aşağı kaydırın.</span>
+            <button id="closeBanner" class="close-banner"><i class="fas fa-times"></i></button>
+        </div>
+    </div>
+
+    <!-- PARTICLES -->
+    <div id="particles-js"></div>
+
+    <!-- CURSOR -->
+    <div class="cursor"></div>
+    <div class="cursor-follower"></div>
+
+    <!-- NAVIGATION -->
+    <nav id="navbar">
+        <div class="nav-container">
+            <a href="#hero" class="nav-logo">
+                <img src="logo.png" alt="QWEX Logo">
+                <span class="logo-text">QWE<span class="logo-x">X</span></span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="#hero" data-text="Ana Sayfa">Ana Sayfa</a></li>
+                <li><a href="#live-data" data-text="Canlı Veriler">Canlı Veriler</a></li>
+                <li><a href="#predictions" data-text="Tahminler">Tahminler</a></li>
+                <li><a href="#alerts" data-text="Uyarılar">Uyarılar</a></li>
+                <li><a href="#telegram" data-text="Telegram">Telegram</a></li>
+                <li><a href="#about" data-text="Hakkımızda">Hakkımızda</a></li>
+            </ul>
+            <div class="nav-actions">
+                <!-- Theme Toggle -->
+                <button class="nav-icon-btn" id="themeToggle" title="Tema Değiştir">
+                    <i class="fas fa-moon" id="themeIcon"></i>
+                </button>
+                <!-- Jury Demo Button -->
+                <button class="nav-icon-btn jury-btn" id="juryToggle" title="Fırtına Simülasyonu (Jüri Demo)">
+                    <i class="fas fa-bolt"></i>
+                </button>
+                <!-- AI Toggle -->
+                <button class="ai-toggle" id="aiToggle">
+                    <i class="fas fa-robot"></i>
+                    <span>Asistan</span>
+                </button>
+            </div>
+            <div class="hamburger" id="hamburger">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- AI ASSISTANT SIDEBAR -->
+    <aside id="ai-assistant" class="ai-sidebar">
+        <div class="ai-header">
+            <div class="ai-avatar">
+                <div class="ai-avatar-ring"></div>
+                <img src="logo.png" alt="QWEX" onerror="this.style.display='none'">
+                <div class="ai-status-dot"></div>
+            </div>
+            <div class="ai-info">
+                <h3>QWEX <span style="color:var(--primary)">Asistan</span></h3>
+                <span class="ai-status-text">Çevrimiçi</span>
+            </div>
+            <button class="ai-close" id="aiClose"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="ai-chat" id="aiChat">
+            <div class="ai-message bot">
+                <div class="message-avatar">
+                    <img src="logo.png" alt="Q" onerror="this.parentElement.innerHTML='<i class=\'fas fa-satellite\'></i>'">
+                </div>
+                <div class="message-content">
+                    <p>Merhaba! 🌞 Güneş fırtınaları ve uzay havası hakkında ne öğrenmek istersiniz?</p>
+                    <span class="message-time">Şimdi</span>
+                </div>
+            </div>
+            <div class="ai-quick-actions">
+                <button class="quick-btn" data-question="Güneş fırtınası nedir?"><i class="fas fa-sun"></i> Güneş Fırtınası</button>
+                <button class="quick-btn" data-question="Bugünkü güneş aktivitesi nasıl?"><i class="fas fa-chart-line"></i> Güncel Durum</button>
+                <button class="quick-btn" data-question="Önümüzdeki 3 gün için tahmin nedir?"><i class="fas fa-calendar"></i> 3 Günlük Tahmin</button>
+                <button class="quick-btn" data-question="X-ray patlaması tehlikeli mi?"><i class="fas fa-radiation"></i> X-Ray Riski</button>
+                <button class="quick-btn" data-question="Kp indeksi ne demek?"><i class="fas fa-magnet"></i> Kp İndeksi</button>
+                <button class="quick-btn" data-question="Aurora ne zaman görülür?"><i class="fas fa-star"></i> Aurora</button>
+            </div>
+        </div>
+        <div class="ai-input-area">
+            <div class="ai-typing" id="aiTyping"><span></span><span></span><span></span></div>
+            <div class="ai-input-wrapper">
+                <input type="text" id="aiInput" placeholder="Sorunuzu yazın..." autocomplete="off">
+                <button id="aiSend"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- HERO SECTION -->
+    <section id="hero">
+        <div class="hero-background">
+            <div class="solar-system">
+                <div class="sun-hero">
+                    <div class="sun-surface"></div>
+                    <div class="sun-corona"></div>
+                    <div class="solar-flare flare-1"></div>
+                    <div class="solar-flare flare-2"></div>
+                    <div class="solar-flare flare-3"></div>
+                </div>
+                <div class="earth-orbit">
+                    <div class="earth"><div class="earth-glow"></div></div>
+                </div>
+            </div>
+        </div>
+        <div class="hero-content">
+            <div class="hero-badge">
+                <span class="badge-icon"><i class="fas fa-satellite"></i></span>
+                <span>TUA Astro Hackathon 2024</span>
+            </div>
+            <h1 class="hero-title">
+                <span class="title-line">Güneş Fırtınalarını</span>
+                <span class="title-line gradient-text">Önceden Tahmin Et</span>
+            </h1>
+            <p class="hero-description">
+                Yapay zeka destekli erken uyarı sistemi ile güneş aktivitelerini takip edin, olası tehlikelere karşı önceden haberdar olun.
+            </p>
+            <div class="hero-stats">
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-database"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="dataPoints">0</span>
+                        <span class="stat-label">Veri Noktası</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-value">24/7</span>
+                        <span class="stat-label">Canlı İzleme</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-bullseye"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="accuracy">0%</span>
+                        <span class="stat-label">Tahmin Doğruluğu</span>
+                    </div>
+                </div>
+            </div>
+            <div class="hero-actions">
+                <a href="#live-data" class="btn btn-primary"><span>Verileri İncele</span><i class="fas fa-arrow-right"></i></a>
+                <a href="#predictions" class="btn btn-secondary"><span>Tahminlere Bak</span><i class="fas fa-chart-line"></i></a>
+            </div>
+        </div>
+        <div class="scroll-indicator">
+            <div class="mouse"><div class="wheel"></div></div>
+            <span>Keşfetmek için kaydır</span>
+        </div>
+    </section>
+
+    <!-- LIVE DATA SECTION -->
+    <section id="live-data">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag"><i class="fas fa-broadcast-tower"></i> Canlı Veri Akışı</span>
+                <h2 class="section-title"><span>NOAA Uydu</span><span class="gradient-text">Güneş Verileri</span></h2>
+                <p class="section-description">GOES uydularından alınan gerçek zamanlı X-ray, proton akısı ve güneş rüzgarı verileri</p>
+            </div>
+            <div class="status-grid">
+                <div class="status-card" id="xrayStatus">
+                    <div class="status-header">
+                        <div class="status-icon xray"><i class="fas fa-radiation-alt"></i></div>
+                        <div class="status-badge normal">Normal</div>
+                    </div>
+                    <div class="status-body">
+                        <h3>X-Ray Akısı</h3>
+                        <div class="status-value"><span id="xrayValue">--</span><span class="unit">W/m²</span></div>
+                        <div class="status-class">Sınıf: <span id="xrayClass">--</span></div>
+                    </div>
+                    <div class="status-chart"><canvas id="xrayMiniChart"></canvas></div>
+                </div>
+                <div class="status-card" id="protonStatus">
+                    <div class="status-header">
+                        <div class="status-icon proton"><i class="fas fa-atom"></i></div>
+                        <div class="status-badge normal">Normal</div>
+                    </div>
+                    <div class="status-body">
+                        <h3>Proton Akısı</h3>
+                        <div class="status-value"><span id="protonValue">--</span><span class="unit">pfu</span></div>
+                        <div class="status-class">Enerji: <span id="protonEnergy">>10 MeV</span></div>
+                    </div>
+                    <div class="status-chart"><canvas id="protonMiniChart"></canvas></div>
+                </div>
+                <div class="status-card" id="kpStatus">
+                    <div class="status-header">
+                        <div class="status-icon kp"><i class="fas fa-magnet"></i></div>
+                        <div class="status-badge normal">Normal</div>
+                    </div>
+                    <div class="status-body">
+                        <h3>Kp İndeksi</h3>
+                        <div class="status-value"><span id="kpValue">--</span><span class="unit"></span></div>
+                        <div class="status-class">Jeomanyetik: <span id="kpLevel">Sakin</span></div>
+                    </div>
+                    <div class="status-chart"><canvas id="kpMiniChart"></canvas></div>
+                </div>
+                <div class="status-card" id="solarWindStatus">
+                    <div class="status-header">
+                        <div class="status-icon wind"><i class="fas fa-wind"></i></div>
+                        <div class="status-badge normal">Normal</div>
+                    </div>
+                    <div class="status-body">
+                        <h3>Güneş Rüzgarı</h3>
+                        <div class="status-value"><span id="windSpeed">--</span><span class="unit">km/s</span></div>
+                        <div class="status-class">Yoğunluk: <span id="windDensity">--</span> p/cm³</div>
+                    </div>
+                    <div class="status-chart"><canvas id="windMiniChart"></canvas></div>
+                </div>
+            </div>
+            <div class="charts-container">
+                <div class="chart-wrapper main-chart">
+                    <div class="chart-header">
+                        <h3><i class="fas fa-chart-area"></i> X-Ray Akısı</h3>
+                        <div class="chart-controls">
+                            <button class="chart-btn active" data-range="7d">7 Gün</button>
+                            <button class="chart-btn" data-range="3d">3 Gün</button>
+                            <button class="chart-btn" data-range="1d">24 Saat</button>
+                        </div>
+                    </div>
+                    <div class="chart-body"><canvas id="xrayChart"></canvas></div>
+                </div>
+                <div class="chart-row">
+                    <div class="chart-wrapper">
+                        <div class="chart-header"><h3><i class="fas fa-bolt"></i> Proton Olayları</h3></div>
+                        <div class="chart-body"><canvas id="protonChart"></canvas></div>
+                    </div>
+                    <div class="chart-wrapper">
+                        <div class="chart-header"><h3><i class="fas fa-compass"></i> Kp İndeksi</h3></div>
+                        <div class="chart-body"><canvas id="kpChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+            <div class="data-source">
+                <div class="source-info"><i class="fas fa-satellite-dish"></i><span>Veri Kaynağı: NOAA SWPC | GOES-16/18 Uyduları</span></div>
+                <div class="last-update"><i class="fas fa-sync-alt"></i><span>Son Güncelleme: <span id="lastUpdate">--</span></span></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PREDICTIONS SECTION -->
+    <section id="predictions">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag"><i class="fas fa-brain"></i> Tahmin Motoru</span>
+                <h2 class="section-title"><span>3 Günlük</span><span class="gradient-text">Güneş Aktivitesi Tahmini</span></h2>
+                <p class="section-description">Makine öğrenimi algoritmaları ile oluşturulan güneş aktivitesi tahminleri</p>
+            </div>
+            <div class="prediction-container">
+                <div class="model-info">
+                    <div class="model-card">
+                        <div class="model-header"><i class="fas fa-microchip"></i><h4>Tahmin Modeli</h4></div>
+                        <div class="model-details">
+                            <div class="detail-row"><span>Algoritma:</span><span>LSTM + Attention</span></div>
+                            <div class="detail-row"><span>Eğitim Verisi:</span><span>10 Yıllık NOAA</span></div>
+                            <div class="detail-row"><span>Doğruluk Oranı:</span><span class="highlight">87.3%</span></div>
+                            <div class="detail-row"><span>Güven Aralığı:</span><span>95%</span></div>
+                        </div>
+                    </div>
+                    <div class="accuracy-chart"><h4>Model Performansı</h4><canvas id="accuracyChart"></canvas></div>
+                </div>
+                <div class="daily-predictions">
+                    <!-- Day 1 -->
+                    <div class="prediction-card" id="prediction-day-1">
+                        <div class="prediction-header">
+                            <div class="day-info"><span class="day-label">YARIN</span><span class="day-date" id="day1Date">--</span></div>
+                            <div class="risk-indicator low"><i class="fas fa-shield-alt"></i><span id="day1Risk">Düşük Risk</span></div>
+                        </div>
+                        <div class="prediction-body">
+                            <div class="prediction-gauges">
+                                <div class="gauge-item"><div class="gauge" id="gauge1Xray"><svg viewBox="0 0 100 100"><circle class="gauge-bg" cx="50" cy="50" r="45"/><circle class="gauge-fill" cx="50" cy="50" r="45"/></svg><div class="gauge-value"><span id="day1XrayProb">--%</span></div></div><span class="gauge-label">X-Ray</span></div>
+                                <div class="gauge-item"><div class="gauge" id="gauge1Proton"><svg viewBox="0 0 100 100"><circle class="gauge-bg" cx="50" cy="50" r="45"/><circle class="gauge-fill" cx="50" cy="50" r="45"/></svg><div class="gauge-value"><span id="day1ProtonProb">--%</span></div></div><span class="gauge-label">Proton</span></div>
+                                <div class="gauge-item"><div class="gauge" id="gauge1Storm"><svg viewBox="0 0 100 100"><circle class="gauge-bg" cx="50" cy="50" r="45"/><circle class="gauge-fill" cx="50" cy="50" r="45"/></svg><div class="gauge-value"><span id="day1StormProb">--%</span></div></div><span class="gauge-label">F��rtına</span></div>
+                            </div>
+                            <div class="prediction-details">
+                                <div class="detail-item"><i class="fas fa-radiation"></i><span>X-Ray Sınıfı:</span><strong id="day1XrayClass">C</strong></div>
+                                <div class="detail-item"><i class="fas fa-magnet"></i><span>Kp:</span><strong id="day1Kp">2-3</strong></div>
+                                <div class="detail-item"><i class="fas fa-percentage"></i><span>Hata Payı:</span><strong id="day1Error">±8%</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Day 2 -->
+                    <div class="prediction-card" id="prediction-day-2">
+                        <div class="prediction-header">
+                            <div class="day-info"><span class="day-label">2 GÜN SONRA</span><span class="day-date" id="day2Date">--</span></div>
+                            <div class="risk-indicator medium"><i class="fas fa-exclamation-triangle"></i><span id="day2Risk">Orta Risk</span></div>
+                        </div>
+                        <div class="prediction-body">
+                            <div class="prediction-gauges">
+                                <div class="gauge-item"><div class="gauge" id="gauge2Xray"><svg viewBox="0 0 100 100"><circle class="gauge-bg" cx="50" cy="50" r="45"/><circle class="gauge-fill" cx="50" cy="50" r="45"/></svg><div class="gauge-value"><span id="day2XrayProb">--%</span></div></div><span class="gauge-label">X-Ray</span></div>
+                                <div class="gauge-item"><div class="gauge" id="gauge2Proton"><svg viewBox="0 0 100 100"><circle class="gauge-bg" cx="50" cy="50" r="45"/><circle class="gauge-fill" cx="50" cy="50" r="45"/></svg><div class="gauge-value"><span id="day2ProtonProb">--%</span></div></div><span class="gauge-label">Proton</span></div>
+                                <div class="gauge-item"><div class="gauge" id="gauge2Storm"><svg viewBox="0 0 100 100"><circle class="gauge-bg" cx="50" cy="50" r="45"/><circle class="gauge-fill" cx="50" cy="50" r="45"/></svg><div class="gauge-value"><span id="day2StormProb">--%</span></div></div><span class="gauge-label">Fırtına</span></div>
+                            </div>
+                            <div class="prediction-details">
+                                <div class="detail-item"><i class="fas fa-radiation"></i><span>X-Ray Sınıfı:</span><strong id="day2XrayClass">M</strong></div>
+                                <div class="detail-item"><i class="fas fa-magnet"></i><span>Kp:</span><strong id="day2Kp">4-5</strong></div>
+                                <div class="detail-item"><i class="fas fa-percentage"></i><span>Hata Payı:</span><strong id="day2Error">±12%</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Day 3 -->
+                    <div class="prediction-card" id="prediction-day-3">
+                        <div class="prediction-header">
+                            <div class="day-info"><span class="day-label">3 GÜN SONRA</span><span class="day-date" id="day3Date">--</span></div>
+                            <div class="risk-indicator low"><i class="fas fa-shield-alt"></i><span id="day3Risk">Düşük Risk</span></div>
+                        </div>
+                        <div class="prediction-body">
+                            <div class="prediction-gauges">
+                                <div class="gauge-item"><div class="gauge" id="gauge3Xray"><svg viewBox="0 0 100 100"><circle class="gauge-bg" cx="50" cy="50" r="45"/><circle class="gauge-fill" cx="50" cy="50" r="45"/></svg><div class="gauge-value"><span id="day3XrayProb">--%</span></div></div><span class="gauge-label">X-Ray</span></div>
+                                <div class="gauge-item"><div class="gauge" id="gauge3Proton"><svg viewBox="0 0 100 100"><circle class="gauge-bg" cx="50" cy="50" r="45"/><circle class="gauge-fill" cx="50" cy="50" r="45"/></svg><div class="gauge-value"><span id="day3ProtonProb">--%</span></div></div><span class="gauge-label">Proton</span></div>
+                                <div class="gauge-item"><div class="gauge" id="gauge3Storm"><svg viewBox="0 0 100 100"><circle class="gauge-bg" cx="50" cy="50" r="45"/><circle class="gauge-fill" cx="50" cy="50" r="45"/></svg><div class="gauge-value"><span id="day3StormProb">--%</span></div></div><span class="gauge-label">Fırtına</span></div>
+                            </div>
+                            <div class="prediction-details">
+                                <div class="detail-item"><i class="fas fa-radiation"></i><span>X-Ray Sınıfı:</span><strong id="day3XrayClass">C</strong></div>
+                                <div class="detail-item"><i class="fas fa-magnet"></i><span>Kp:</span><strong id="day3Kp">2-3</strong></div>
+                                <div class="detail-item"><i class="fas fa-percentage"></i><span>Hata Payı:</span><strong id="day3Error">±15%</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="prediction-summary">
+                    <div class="summary-card"><h4><i class="fas fa-info-circle"></i> Tahmin Özeti</h4><p id="predictionSummary">Veriler analiz ediliyor...</p></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ALERTS SECTION -->
+    <section id="alerts">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag"><i class="fas fa-bell"></i> Uyarı Seviyeleri</span>
+                <h2 class="section-title"><span>NOAA</span><span class="gradient-text">Uzay Hava Ölçeği</span></h2>
+            </div>
+            <div class="alert-scales">
+                <div class="scale-card">
+                    <div class="scale-header"><i class="fas fa-globe-americas"></i><h3>Jeomanyetik Fırtına (G)</h3></div>
+                    <div class="scale-levels">
+                        <div class="level g5"><span class="level-badge">G5</span><span class="level-name">Aşırı</span><span class="level-kp">Kp=9</span></div>
+                        <div class="level g4"><span class="level-badge">G4</span><span class="level-name">Şiddetli</span><span class="level-kp">Kp=8</span></div>
+                        <div class="level g3"><span class="level-badge">G3</span><span class="level-name">Güçlü</span><span class="level-kp">Kp=7</span></div>
+                        <div class="level g2"><span class="level-badge">G2</span><span class="level-name">Orta</span><span class="level-kp">Kp=6</span></div>
+                        <div class="level g1"><span class="level-badge">G1</span><span class="level-name">Küçük</span><span class="level-kp">Kp=5</span></div>
+                    </div>
+                </div>
+                <div class="scale-card">
+                    <div class="scale-header"><i class="fas fa-sun"></i><h3>Güneş Radyasyonu (S)</h3></div>
+                    <div class="scale-levels">
+                        <div class="level s5"><span class="level-badge">S5</span><span class="level-name">Aşırı</span><span class="level-pfu">10⁵ pfu</span></div>
+                        <div class="level s4"><span class="level-badge">S4</span><span class="level-name">Şiddetli</span><span class="level-pfu">10⁴ pfu</span></div>
+                        <div class="level s3"><span class="level-badge">S3</span><span class="level-name">Güçlü</span><span class="level-pfu">10³ pfu</span></div>
+                        <div class="level s2"><span class="level-badge">S2</span><span class="level-name">Orta</span><span class="level-pfu">10² pfu</span></div>
+                        <div class="level s1"><span class="level-badge">S1</span><span class="level-name">Küçük</span><span class="level-pfu">10 pfu</span></div>
+                    </div>
+                </div>
+                <div class="scale-card">
+                    <div class="scale-header"><i class="fas fa-broadcast-tower"></i><h3>Radyo Karartması (R)</h3></div>
+                    <div class="scale-levels">
+                        <div class="level r5"><span class="level-badge">R5</span><span class="level-name">Aşırı</span><span class="level-class">X20</span></div>
+                        <div class="level r4"><span class="level-badge">R4</span><span class="level-name">Şiddetli</span><span class="level-class">X10</span></div>
+                        <div class="level r3"><span class="level-badge">R3</span><span class="level-name">Güçlü</span><span class="level-class">X1</span></div>
+                        <div class="level r2"><span class="level-badge">R2</span><span class="level-name">Orta</span><span class="level-class">M5</span></div>
+                        <div class="level r1"><span class="level-badge">R1</span><span class="level-name">Küçük</span><span class="level-class">M1</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="current-alert" id="currentAlert">
+                <div class="alert-indicator"><div class="alert-pulse"></div><i class="fas fa-shield-alt"></i></div>
+                <div class="alert-content"><h4>Mevcut Durum</h4><p id="currentAlertText">Aktif güneş fırtınası uyarısı bulunmamaktadır.</p></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- TELEGRAM SECTION -->
+    <section id="telegram">
+        <div class="telegram-container">
+            <div class="telegram-bg"><div class="telegram-grid"></div><div class="telegram-glow"></div></div>
+            <div class="telegram-content">
+                <div class="telegram-header">
+                    <span class="curious-badge"><i class="fas fa-question-circle"></i> Merak mı ediyorsunuz?</span>
+                    <h2><span>Uzay Havasını</span><span class="gradient-text">Anında Takip Edin!</span></h2>
+                    <p>Güneş fırtınaları, aurora tahminleri ve uzay olayları hakkında anlık bildirimler alın!</p>
+                </div>
+                <div class="telegram-cards">
+                    <div class="telegram-card free">
+                        <div class="card-badge"><i class="fas fa-users"></i> Herkese Açık</div>
+                        <div class="card-icon"><i class="fab fa-telegram-plane"></i></div>
+                        <h3>Free Kanal</h3>
+                        <p>Temel güneş aktivitesi uyarıları ve haftalık özetler</p>
+                        <ul class="card-features">
+                            <li><i class="fas fa-check"></i> Günlük güneş raporu</li>
+                            <li><i class="fas fa-check"></i> Büyük fırtına uyarıları</li>
+                            <li><i class="fas fa-check"></i> Aurora tahminleri</li>
+                            <li><i class="fas fa-check"></i> Eğitici içerikler</li>
+                        </ul>
+                        <a href="https://t.me/qwex_free" target="_blank" rel="noopener" class="telegram-btn free"><i class="fab fa-telegram-plane"></i><span>Katıl - Ücretsiz</span></a>
+                        <div class="member-count"><i class="fas fa-user-friends"></i><span>2,450+ üye</span></div>
+                    </div>
+                    <div class="telegram-card vip">
+                        <div class="card-badge"><i class="fas fa-crown"></i> VIP Erişim</div>
+                        <div class="card-icon"><i class="fab fa-telegram-plane"></i><div class="vip-glow"></div></div>
+                        <h3>VIP Kanal</h3>
+                        <p>Profesyoneller ve araştırmacılar için detaylı analizler</p>
+                        <ul class="card-features">
+                            <li><i class="fas fa-check"></i> Gerçek zamanlı uyarılar</li>
+                            <li><i class="fas fa-check"></i> Detaylı teknik analizler</li>
+                            <li><i class="fas fa-check"></i> Bilimsel makaleler</li>
+                            <li><i class="fas fa-check"></i> Profesör desteği</li>
+                            <li><i class="fas fa-check"></i> Özel webinarlar</li>
+                            <li><i class="fas fa-check"></i> API erişimi</li>
+                        </ul>
+                        <a href="https://t.me/qwex_vip" target="_blank" rel="noopener" class="telegram-btn vip"><i class="fab fa-telegram-plane"></i><span>Başvur - VIP</span></a>
+                        <div class="member-count"><i class="fas fa-user-shield"></i><span>150+ uzman</span></div>
+                        <div class="vip-note"><i class="fas fa-info-circle"></i><span>Akademisyenler ve yetkili kurumlar için</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ABOUT SECTION -->
+    <section id="about">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag"><i class="fas fa-users"></i> Bizi Tanıyın</span>
+                <h2 class="section-title"><span>Takımımız &</span><span class="gradient-text">Vizyonumuz</span></h2>
+            </div>
+            <div class="about-container">
+                <div class="about-story">
+                    <div class="story-card">
+                        <div class="story-icon"><i class="fas fa-rocket"></i></div>
+                        <h3>Misyonumuz</h3>
+                        <p>Güneş fırtınalarının dünya üzerindeki potansiyel etkilerini önceden tahmin ederek, teknolojik altyapıları ve insan sağlığını korumak için erken uyarı sistemleri geliştirmek.</p>
+                    </div>
+                    <div class="story-card">
+                        <div class="story-icon"><i class="fas fa-eye"></i></div>
+                        <h3>Vizyonumuz</h3>
+                        <p>Yapay zeka ve makine öğrenimi teknolojilerini kullanarak, uzay hava tahminlerinde dünya standartlarında doğruluk oranlarına ulaşmak.</p>
+                    </div>
+                </div>
+
+                <!-- 5 KİŞİLİK TAKIM -->
+                <div class="team-section">
+                    <h3 class="team-title"><i class="fas fa-star"></i> Takım Üyeleri</h3>
+                    <div class="team-grid five-members">
+                        <!-- 1 - Mert Emir Gültekin -->
+                        <div class="team-card">
+                            <div class="card-front">
+                                <div class="member-avatar"><div class="avatar-ring"></div><div class="avatar-placeholder"><i class="fas fa-user-tie"></i></div></div>
+                                <h4>Mert Emir Gültekin</h4>
+                                <span class="member-role">Takım Lideri</span>
+                                <span class="member-subtitle">Proje Yönetimi & AI</span>
+                            </div>
+                            <div class="card-back">
+                                <p>"Güneşin gücünü anlamak, geleceği şekillendirmektir."</p>
+                                <div class="member-skills"><span>Python</span><span>TensorFlow</span><span>ML</span><span>Yönetim</span></div>
+                            </div>
+                        </div>
+                        <!-- 2 - Arda Can Başaran -->
+                        <div class="team-card">
+                            <div class="card-front">
+                                <div class="member-avatar"><div class="avatar-ring"></div><div class="avatar-placeholder"><i class="fas fa-server"></i></div></div>
+                                <h4>Arda Can Başaran</h4>
+                                <span class="member-role">Backend Developer</span>
+                                <span class="member-subtitle">API & Veri İşleme</span>
+                            </div>
+                            <div class="card-back">
+                                <p>"Veriler konuşur, biz dinleriz."</p>
+                                <div class="member-skills"><span>Node.js</span><span>Python</span><span>API</span><span>DB</span></div>
+                            </div>
+                        </div>
+                        <!-- 3 - Poyraz Okut -->
+                        <div class="team-card">
+                            <div class="card-front">
+                                <div class="member-avatar"><div class="avatar-ring"></div><div class="avatar-placeholder"><i class="fas fa-palette"></i></div></div>
+                                <h4>Poyraz Okut</h4>
+                                <span class="member-role">Frontend Developer</span>
+                                <span class="member-subtitle">UI/UX & Animasyon</span>
+                            </div>
+                            <div class="card-back">
+                                <p>"Karmaşık verileri anlaşılır kılmak sanatımız."</p>
+                                <div class="member-skills"><span>React</span><span>GSAP</span><span>CSS</span><span>UI/UX</span></div>
+                            </div>
+                        </div>
+                        <!-- 4 - Mustafa Zurnacı -->
+                        <div class="team-card">
+                            <div class="card-front">
+                                <div class="member-avatar"><div class="avatar-ring"></div><div class="avatar-placeholder"><i class="fas fa-chart-pie"></i></div></div>
+                                <h4>Mustafa Zurnacı</h4>
+                                <span class="member-role">Data Scientist</span>
+                                <span class="member-subtitle">Analiz & Modelleme</span>
+                            </div>
+                            <div class="card-back">
+                                <p>"Her veri noktası bir hikaye anlatır."</p>
+                                <div class="member-skills"><span>Pandas</span><span>Scikit</span><span>Stats</span><span>NumPy</span></div>
+                            </div>
+                        </div>
+                        <!-- 5 - Abdullah Enes Gülerli -->
+                        <div class="team-card">
+                            <div class="card-front">
+                                <div class="member-avatar"><div class="avatar-ring"></div><div class="avatar-placeholder"><i class="fas fa-search"></i></div></div>
+                                <h4>Abdullah Enes Gülerli</h4>
+                                <span class="member-role">Araştırma & Test</span>
+                                <span class="member-subtitle">Doküman & QA</span>
+                            </div>
+                            <div class="card-back">
+                                <p>"Detaylar büyük resmi tamamlar."</p>
+                                <div class="member-skills"><span>Research</span><span>Testing</span><span>Docs</span><span>QA</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tech-stack">
+                    <h3>Kullanılan Teknolojiler</h3>
+                    <div class="tech-icons">
+                        <div class="tech-item"><i class="fab fa-python"></i><span>Python</span></div>
+                        <div class="tech-item"><i class="fab fa-js"></i><span>JavaScript</span></div>
+                        <div class="tech-item"><i class="fas fa-brain"></i><span>TensorFlow</span></div>
+                        <div class="tech-item"><i class="fas fa-chart-bar"></i><span>Chart.js</span></div>
+                        <div class="tech-item"><i class="fas fa-satellite"></i><span>NOAA API</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer id="footer">
+        <div class="footer-wave"><svg viewBox="0 0 1200 120" preserveAspectRatio="none"><path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z"></path></svg></div>
+        <div class="footer-content">
+            <div class="footer-brand">
+                <img src="logo.png" alt="QWEX" onerror="this.style.display='none'">
+                <h3>QWE<span class="footer-x">X</span></h3>
+                <p>Güneş Fırtınası Erken Uyarı Sistemi</p>
+            </div>
+            <div class="footer-links">
+                <div class="link-group"><h4>Hızlı Linkler</h4><a href="#hero">Ana Sayfa</a><a href="#live-data">Canlı Veriler</a><a href="#predictions">Tahminler</a><a href="#about">Hakkımızda</a></div>
+                <div class="link-group"><h4>Kaynaklar</h4><a href="https://www.swpc.noaa.gov/" target="_blank">NOAA SWPC</a><a href="https://www.spaceweatherlive.com/" target="_blank">Space Weather Live</a><a href="https://sdo.gsfc.nasa.gov/" target="_blank">NASA SDO</a></div>
+                <div class="link-group"><h4>İletişim</h4><a href="mailto:info@qwex.space">info@qwex.space</a><a href="https://t.me/qwex_free" target="_blank">Telegram</a></div>
+            </div>
+        </div>
+        <div class="footer-bottom"><p>&copy; 2024 QWEX - TUA Astro Hackathon</p><p>Veriler NOAA SWPC'den alınmaktadır</p></div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
